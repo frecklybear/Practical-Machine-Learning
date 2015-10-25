@@ -57,7 +57,6 @@ cMethod <- trainControl(method = "cv", number = 4)
 
 # randomForest model 
 modFit <- train(classe ~., data = train_set, method = "rf", trControl = cMethod)
-#modFit <- randomForest(classe ~. , data = train_set)
 
 modFit$finalModel
 ```
