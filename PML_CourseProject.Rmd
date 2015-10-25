@@ -1,0 +1,98 @@
+
+## **Practical Machine Learning Course Project**
+
+### **Executive Summary**
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, the goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways (class A-E). 
+
+This report seeks to devise a model to predict the manner in which they did the exercise. The report describes:
+
+1. Setting up and exploring data
+2. Model Selection
+3. Expected out of sample error
+4. Predictions on Test Set (Results of Model)
+
+### **1. Setting up and exploring data**
+```{r}
+library(caret)
+library(randomForest)
+
+```
+
+**Load and clean data:**
+```{r}
+setwd('/Users/Sarah/Documents/datasciencecourse')
+
+ # set missing data to NA
+train_raw <- read.csv(file="pml-training.csv", na.strings = c("NA", ""))
+test_raw <- read.csv(file="pml-testing.csv", na.strings = c("NA", ""))
+dim(train_raw)
+
+ # remove NA cols and first 7 cols of non-accelerometer readings 
+train_raw <- train_raw[,8:160]
+test_raw <- test_raw[,8:160]
+train_data <- train_raw[, colSums(is.na(train_raw)) == 0] 
+test_data <- test_raw[, colSums(is.na(test_raw)) == 0] 
+
+dim(train_data)
+
+```
+
+**Splitting Data**
+```{r}
+set.seed(123)
+
+# split training set for cross-validation
+inTrain <- createDataPartition(train_data$classe, p = 0.75, list= FALSE)
+train_set = train_data[inTrain, ]
+crossValid_set = train_data[-inTrain, ]
+```
+
+### **2. Model Selection**
+We will train the model using randomForest as it reduces the variance by creating many decision trees, hence is one of the best models in terms of predictive power. 
+
+**Training Model**
+```{r}
+# train control with cross validation resampling, 4 folds
+cMethod <- trainControl(method = "cv", number = 4) 
+
+# randomForest model 
+modFit <- train(classe ~., data = train_set, method = "rf", trControl = cMethod)
+#modFit <- randomForest(classe ~. , data = train_set)
+
+modFit$finalModel
+```
+
+### **3. Out-of-sample error**
+**Analysing Model Accuracy**
+```{r}
+train_fit <- predict(modFit, train_set, type = "raw")
+confusionMatrix(train_fit, train_set$classe) # rechecking in-sample error rate to be 0 (accuracy = 1)
+
+# cross validating
+test_fit <- predict(modFit, crossValid_set, type = "raw")
+confusionMatrix(test_fit, crossValid_set$classe) 
+```
+
+We can observe a very high accuracy of the randomForest model of 99.33%. **The out-of-sample error rate is: 0.67%.**
+Hence, we will use the algorithm created by the randomForest model to make predictions on the test set. 
+
+### **4. Predictions on Test Set (Results of Model)**
+Generate prediction results on the original Test Data set:
+```{r}
+results <- predict(modFit, test_data, type="raw")
+results
+```
+
+Create files for submission:
+```{r}
+pml_write_files = function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0("problem_id_",i,".txt")
+    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+
+pml_write_files(results)
+```
+
